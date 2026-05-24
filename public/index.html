@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VPN Config Panel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="phone-shell">
+      <section id="loginView" class="phone-screen login-screen">
+        <div class="app-logo">VPN</div>
+        <p class="eyebrow">Private Config Manager</p>
+        <h1>Config Control</h1>
+        <p class="lead">Manage your VPN app config and raw update link from one panel.</p>
+
+        <div class="login-card">
+          <label for="token">Admin token</label>
+          <div class="password-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="Your secret token" />
+            <button id="loginBtn" type="button">Unlock</button>
+          </div>
+          <p class="hint">Use the same token that you set in Railway or Render as ADMIN_TOKEN.</p>
+          <p id="loginStatus" class="status" role="status"></p>
+        </div>
+      </section>
+
+      <section id="dashboardView" class="phone-screen dashboard hidden">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">VPN Panel</p>
+            <h2 id="screenTitle">Home</h2>
+          </div>
+          <span id="stateText" class="state-pill">Ready</span>
+        </header>
+
+        <section id="homeTab" class="tab-panel active">
+          <div class="hero-card">
+            <span class="hero-label">Current config</span>
+            <strong id="versionText">v1</strong>
+            <p id="updatedText">Not updated yet</p>
+          </div>
+
+          <div class="info-list">
+            <div class="info-row">
+              <span>Config size</span>
+              <strong id="sizeText">0 B</strong>
+            </div>
+            <div class="info-row">
+              <span>Raw endpoint</span>
+              <strong>/raw/config</strong>
+            </div>
+            <div class="info-row raw-row">
+              <span>Raw link</span>
+              <input id="rawLink" type="text" readonly />
+            </div>
+          </div>
+
+          <div class="actions two">
+            <button id="copyBtn" type="button">Copy link</button>
+            <a id="openRawBtn" class="link-button" href="/raw/config" target="_blank" rel="noreferrer">Open</a>
+          </div>
+        </section>
+
+        <section id="updateTab" class="tab-panel">
+          <label for="config">VPN config</label>
+          <textarea id="config" spellcheck="false" placeholder="Paste your VPN config here"></textarea>
+
+          <div class="actions two">
+            <button id="saveBtn" type="button">Save update</button>
+            <button id="reloadBtn" class="secondary" type="button">Reload</button>
+          </div>
+
+          <p id="status" class="status" role="status"></p>
+        </section>
+
+        <section id="profileTab" class="tab-panel">
+          <div class="profile-card">
+            <div class="avatar">A</div>
+            <div>
+              <h3>Admin</h3>
+              <p>Config manager access</p>
+            </div>
+          </div>
+
+          <div class="info-list">
+            <div class="info-row">
+              <span>Storage</span>
+              <strong>Server file</strong>
+            </div>
+            <div class="info-row">
+              <span>Security</span>
+              <strong>Token protected</strong>
+            </div>
+            <div class="info-row">
+              <span>App URL</span>
+              <strong id="appUrlText">-</strong>
+            </div>
+          </div>
+
+          <button id="logoutBtn" class="danger" type="button">Lock panel</button>
+        </section>
+
+        <nav class="bottom-tabs" aria-label="App navigation">
+          <button class="tab-btn active" type="button" data-tab="homeTab" data-title="Home">
+            <span class="tab-icon">H</span>
+            Home
+          </button>
+          <button class="tab-btn" type="button" data-tab="updateTab" data-title="Update">
+            <span class="tab-icon">U</span>
+            Update
+          </button>
+          <button class="tab-btn" type="button" data-tab="profileTab" data-title="Profile">
+            <span class="tab-icon">P</span>
+            Profile
+          </button>
+        </nav>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
