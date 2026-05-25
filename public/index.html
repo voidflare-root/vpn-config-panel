@@ -12,7 +12,7 @@
         <div class="app-logo">VPN</div>
         <p class="eyebrow">Private Config Manager</p>
         <h1>Config Control</h1>
-        <p class="lead">Manage your VPN app config and raw update link from one panel.</p>
+        <p class="lead">Paste any config format and save it directly to GitHub.</p>
 
         <div class="login-card">
           <label for="token">Admin token</label>
@@ -36,8 +36,8 @@
 
         <section id="homeTab" class="tab-panel active">
           <div class="hero-card">
-            <span class="hero-label">Current config</span>
-            <strong id="versionText">-</strong>
+            <span class="hero-label">Config file</span>
+            <strong id="formatText">Direct</strong>
             <p id="updatedText">Not updated yet</p>
           </div>
 
@@ -64,7 +64,7 @@
 
         <section id="updateTab" class="tab-panel">
           <label for="config">VPN config</label>
-          <textarea id="config" spellcheck="false" placeholder="Paste plain VPN config or JSON here"></textarea>
+          <textarea id="config" spellcheck="false" placeholder="Paste JSON, text, encoded data, server list, or any config format here"></textarea>
 
           <div class="actions two">
             <button id="saveBtn" type="button">Save update</button>
@@ -85,12 +85,12 @@
 
           <div class="info-list">
             <div class="info-row">
-              <span>Storage</span>
-              <strong>GitHub config.json</strong>
+              <span>Save mode</span>
+              <strong>Direct text</strong>
             </div>
             <div class="info-row">
-              <span>Security</span>
-              <strong>Token protected</strong>
+              <span>Validation</span>
+              <strong>Off</strong>
             </div>
             <div class="info-row">
               <span>App URL</span>

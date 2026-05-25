@@ -14,7 +14,7 @@ const openRawBtn = document.querySelector("#openRawBtn");
 const sizeText = document.querySelector("#sizeText");
 const stateText = document.querySelector("#stateText");
 const screenTitle = document.querySelector("#screenTitle");
-const versionText = document.querySelector("#versionText");
+const formatText = document.querySelector("#formatText");
 const updatedText = document.querySelector("#updatedText");
 const appUrlText = document.querySelector("#appUrlText");
 const loginStatusEl = document.querySelector("#loginStatus");
@@ -54,32 +54,25 @@ function tokenHeaders() {
   return { "x-admin-token": token };
 }
 
+function detectFormat(config) {
+  const trimmed = config.trim();
+  if (!trimmed) return "Empty";
+
+  try {
+    JSON.parse(trimmed);
+    return "JSON";
+  } catch {
+    return "Text";
+  }
+}
+
 function updateConfigMeta() {
   const bytes = new Blob([configInput.value]).size;
   sizeText.textContent = `${bytes.toLocaleString()} B`;
+  formatText.textContent = detectFormat(configInput.value);
 }
 
-function findConfigVersion(config) {
-  const trimmed = config.trim();
-  if (!trimmed) return "";
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    const version = parsed.version || parsed.configVersion || parsed.config_version || parsed.appVersion || parsed.ver;
-    if (version !== undefined && version !== null && String(version).trim()) {
-      return String(version).trim();
-    }
-  } catch {
-    // Plain text config is supported.
-  }
-
-  const match = config.match(/^\s*(?:#|\/\/)?\s*(?:config[_ -]?version|app[_ -]?version|version|ver)\s*[:=]\s*["']?([^"'\r\n,;]+)["']?\s*$/im);
-  return match && match[1] ? match[1].trim() : "";
-}
-
-function updateVersionMeta(updatedAt) {
-  const realVersion = findConfigVersion(configInput.value);
-  versionText.textContent = realVersion || "Not found";
+function updateTime(updatedAt) {
   updatedText.textContent = updatedAt
     ? `Updated ${new Date(updatedAt).toLocaleString()}`
     : localStorage.getItem("vpn-config-updated") || "Not updated yet";
@@ -104,7 +97,7 @@ async function loadConfig() {
     openRawBtn.href = activeRawUrl;
   }
   updateConfigMeta();
-  updateVersionMeta();
+  updateTime();
   setDashboard(true);
   setStatus(statusEl, "Config loaded.", "success");
 }
@@ -130,16 +123,16 @@ async function saveConfig() {
   updateConfigMeta();
   const updatedMessage = `Updated ${new Date(data.updatedAt).toLocaleString()}`;
   localStorage.setItem("vpn-config-updated", updatedMessage);
-  updateVersionMeta(data.updatedAt);
+  updateTime(data.updatedAt);
   activateTab("homeTab", "Home");
-  setStatus(statusEl, `Saved ${Number(data.bytes || 0).toLocaleString()} bytes.`, "success");
+  setStatus(statusEl, `Saved exactly as pasted: ${Number(data.bytes || 0).toLocaleString()} bytes.`, "success");
 }
 
 rawLinkInput.value = activeRawUrl;
 openRawBtn.href = activeRawUrl;
 appUrlText.textContent = window.location.protocol === "file:" ? "Local preview" : window.location.host;
 updateConfigMeta();
-updateVersionMeta();
+updateTime();
 
 loginBtn.addEventListener("click", () => {
   if (!tokenInput.value.trim()) {
@@ -177,10 +170,7 @@ copyBtn.addEventListener("click", async () => {
   setStatus(statusEl, "Raw link copied.", "success");
 });
 
-configInput.addEventListener("input", () => {
-  updateConfigMeta();
-  updateVersionMeta();
-});
+configInput.addEventListener("input", updateConfigMeta);
 
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => activateTab(button.dataset.tab, button.dataset.title));
