@@ -58,10 +58,6 @@ function rawConfigUrl() {
     return `https://raw.githubusercontent.com/${GITHUB_REPO}/${encodeURIComponent(branch)}/${encodedPath}`;
 }
 
-function appRawUrl(req) {
-    return `${req.protocol}://${req.get('host')}/config.json`;
-}
-
 function decodeContentBuffer(content) {
     return Buffer.from((content || '').replace(/\s/g, ''), 'base64');
 }
@@ -147,7 +143,7 @@ app.get('/api/meta', (req, res) => {
         repo: GITHUB_REPO || '-',
         configPath: CONFIG_PATH,
         branch: GITHUB_BRANCH || 'main',
-        rawLink: appRawUrl(req),
+        rawLink: GITHUB_REPO ? rawConfigUrl() : '',
         githubRawLink: GITHUB_REPO ? rawConfigUrl() : ''
     });
 });
@@ -223,7 +219,7 @@ app.post('/api/update', async (req, res) => {
 
         const configText = configBuffer.toString('utf8');
         await saveConfigBase64(configBuffer.toString('base64'), sha);
-        res.json({ success: true, data: { config: configText }, rawLink: appRawUrl(req) });
+        res.json({ success: true, data: { config: configText }, rawLink: rawConfigUrl() });
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({
