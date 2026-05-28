@@ -203,7 +203,7 @@ app.post('/api/update', async (req, res) => {
             if (err.status !== 404) throw err;
         }
 
-        const configText = String(config).trim();
+        const configText = String(config);
         await saveConfig(configText, sha);
         res.json({ success: true, data: { config: configText }, rawLink: appRawUrl(req) });
     } catch (err) {
