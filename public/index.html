@@ -44,18 +44,6 @@
                     
                     <div class="info-grid">
                         <div class="info-item">
-                            <span class="label">Version</span>
-                            <span class="value highlight" id="lblVersion">--</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="label">Last Updated Date</span>
-                            <span class="value" id="lblDate">--</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="label">Last Updated Time</span>
-                            <span class="value" id="lblTime">--</span>
-                        </div>
-                        <div class="info-item">
                             <span class="label">GitHub Repo</span>
                             <span class="value mono" id="lblRepo">--</span>
                         </div>
@@ -64,6 +52,11 @@
                             <span class="value mono" id="lblPath">--</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="glass-card config-card">
+                    <h3>Current File Content</h3>
+                    <pre id="configPreview">--</pre>
                 </div>
 
                 <div class="glass-card link-card">
@@ -80,16 +73,11 @@
             <div id="updateTab" class="tab-content">
                 <div class="glass-card">
                     <h3>Push New Config</h3>
-                    <p class="subtitle">Paste the update text. It will be saved into your GitHub JSON file.</p>
-                    
-                    <div class="input-group">
-                        <label>Config Version</label>
-                        <input type="text" id="versionInput" placeholder="e.g. 2.0">
-                    </div>
+                    <p class="subtitle">Only this box content will be saved into your GitHub JSON file.</p>
 
                     <div class="input-group">
-                        <label>Encrypted Configuration</label>
-                        <textarea id="configInput" placeholder="Paste your encrypted config here..." rows="8"></textarea>
+                        <label>Update Text</label>
+                        <textarea id="configInput" placeholder="Paste your update text here..." rows="10"></textarea>
                     </div>
 
                     <button id="updateBtn" class="btn primary-btn">
