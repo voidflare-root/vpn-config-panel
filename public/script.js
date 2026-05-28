@@ -123,7 +123,8 @@ updateBtn.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 password: sessionPassword,
-                config: newConfig
+                config: newConfig,
+                configBase64: utf8ToBase64(newConfig)
             })
         });
         
@@ -162,6 +163,17 @@ function switchTab(targetId) {
     tabContents.forEach(tab => {
         tab.classList.toggle('active', tab.id === targetId);
     });
+}
+
+function utf8ToBase64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+
+    bytes.forEach(byte => {
+        binary += String.fromCharCode(byte);
+    });
+
+    return btoa(binary);
 }
 
 // --- Copy Raw Link Logic ---
