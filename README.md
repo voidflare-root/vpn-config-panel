@@ -6,22 +6,19 @@ Render-ready Node.js website for updating a VPN app config JSON file in GitHub.
 
 - Password protected admin login.
 - App-style UI with bottom Home and Update taskbar.
-- Home shows version, update date, update time, GitHub repo, JSON file path, and raw link.
-- Update tab saves pasted config text into your GitHub repo JSON file.
+- Home shows GitHub repo, JSON file path, raw link, and current file content.
+- Update tab saves only the pasted text into your GitHub repo JSON file.
 - `.env` controls the login password, repo name, GitHub token, JSON path, and branch.
 
 ## Required GitHub JSON
 
 Create this file in your GitHub repo. Default path is `data/config.json`.
 
-```json
-{
-    "version": "1.0",
-    "date": "-",
-    "time": "-",
-    "config": ""
-}
+```text
+PASTE_CONFIG_HERE
 ```
+
+When you update from the website, this file is replaced with exactly the text from the update box. The app does not add version, date, time, or any extra JSON wrapper.
 
 ## Environment Variables
 
