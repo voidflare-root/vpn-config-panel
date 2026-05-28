@@ -58,6 +58,10 @@ function rawConfigUrl() {
     return `https://raw.githubusercontent.com/${GITHUB_REPO}/${encodeURIComponent(branch)}/${encodedPath}`;
 }
 
+function appRawUrl(req) {
+    return `${req.protocol}://${req.get('host')}/config.json`;
+}
+
 function encodeBase64(text) {
     return Buffer.from(text, 'utf8').toString('base64');
 }
@@ -137,13 +141,15 @@ app.get('/api/meta', (req, res) => {
         repo: GITHUB_REPO || '-',
         configPath: CONFIG_PATH,
         branch: GITHUB_BRANCH || 'main',
-        rawLink: GITHUB_REPO ? rawConfigUrl() : ''
+        rawLink: appRawUrl(req),
+        githubRawLink: GITHUB_REPO ? rawConfigUrl() : ''
     });
 });
 
 app.get('/api/config', async (req, res) => {
     try {
         const { data } = await getCurrentConfig();
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.json(data);
     } catch (err) {
         console.error(err);
@@ -158,6 +164,7 @@ app.get('/config.json', async (req, res) => {
     try {
         const { data } = await getCurrentConfig();
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.send(data.config);
     } catch (err) {
         res.status(err.status || 500).json({ error: err.message || 'Config not found' });
@@ -196,9 +203,9 @@ app.post('/api/update', async (req, res) => {
             if (err.status !== 404) throw err;
         }
 
-        const configText = String(config);
+        const configText = String(config).trim();
         await saveConfig(configText, sha);
-        res.json({ success: true, data: { config: configText }, rawLink: rawConfigUrl() });
+        res.json({ success: true, data: { config: configText }, rawLink: appRawUrl(req) });
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({
