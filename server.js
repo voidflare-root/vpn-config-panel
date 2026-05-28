@@ -62,12 +62,16 @@ function appRawUrl(req) {
     return `${req.protocol}://${req.get('host')}/config.json`;
 }
 
-function encodeBase64(text) {
-    return Buffer.from(text, 'utf8').toString('base64');
+function decodeContentBuffer(content) {
+    return Buffer.from((content || '').replace(/\s/g, ''), 'base64');
 }
 
-function decodeBase64(text) {
-    return Buffer.from(text || '', 'base64').toString('utf8');
+function stripUtf8Bom(buffer) {
+    if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+        return buffer.subarray(3);
+    }
+
+    return buffer;
 }
 
 async function githubRequest(url, options = {}) {
@@ -108,18 +112,20 @@ async function getGithubFile() {
 
 async function getCurrentConfig() {
     const file = await getGithubFile();
-    const content = decodeBase64(file.content);
+    const buffer = stripUtf8Bom(decodeContentBuffer(file.content));
+    const content = buffer.toString('utf8');
 
     return {
         data: { config: content },
+        buffer,
         sha: file.sha
     };
 }
 
-async function saveConfig(configText, sha) {
+async function saveConfigBase64(contentBase64, sha) {
     const body = {
         message: 'Update VPN config',
-        content: encodeBase64(configText)
+        content: contentBase64
     };
 
     if (sha) {
@@ -162,10 +168,10 @@ app.get('/api/config', async (req, res) => {
 
 app.get('/config.json', async (req, res) => {
     try {
-        const { data } = await getCurrentConfig();
+        const { buffer } = await getCurrentConfig();
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        res.send(data.config);
+        res.send(buffer);
     } catch (err) {
         res.status(err.status || 500).json({ error: err.message || 'Config not found' });
     }
@@ -183,17 +189,29 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/update', async (req, res) => {
-    const { password, config } = req.body;
+    const { password, config, configBase64 } = req.body;
 
     if (password !== PASSWORD) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (!config || !String(config).trim()) {
+    if ((!configBase64 || !String(configBase64).trim()) && (!config || !String(config).trim())) {
         return res.status(400).json({ success: false, message: 'Config text is required' });
     }
 
     try {
+        let configBuffer;
+
+        if (configBase64) {
+            configBuffer = stripUtf8Bom(Buffer.from(String(configBase64).replace(/\s/g, ''), 'base64'));
+        } else {
+            configBuffer = stripUtf8Bom(Buffer.from(String(config), 'utf8'));
+        }
+
+        if (!configBuffer.toString('utf8').trim()) {
+            return res.status(400).json({ success: false, message: 'Config text is required' });
+        }
+
         let sha = null;
 
         try {
@@ -203,8 +221,8 @@ app.post('/api/update', async (req, res) => {
             if (err.status !== 404) throw err;
         }
 
-        const configText = String(config);
-        await saveConfig(configText, sha);
+        const configText = configBuffer.toString('utf8');
+        await saveConfigBase64(configBuffer.toString('base64'), sha);
         res.json({ success: true, data: { config: configText }, rawLink: appRawUrl(req) });
     } catch (err) {
         console.error(err);
