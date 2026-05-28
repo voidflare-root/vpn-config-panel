@@ -18,7 +18,7 @@ Create this file in your GitHub repo. Default path is `data/config.json`.
 PASTE_CONFIG_HERE
 ```
 
-When you update from the website, this file is replaced with the exact text from the update box. The app does not add version, date, time, or any extra JSON wrapper.
+When you update from the website, this file is replaced with the exact UTF-8 bytes from the update box. The app does not add version, date, time, or any extra JSON wrapper.
 
 ## Environment Variables
 
