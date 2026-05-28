@@ -15,6 +15,7 @@ const lblPath = document.getElementById('lblPath');
 const configPreview = document.getElementById('configPreview');
 const rawLinkInput = document.getElementById('rawLinkInput');
 const copyBtn = document.getElementById('copyBtn');
+const openRawBtn = document.getElementById('openRawBtn');
 
 const configInput = document.getElementById('configInput');
 const updateBtn = document.getElementById('updateBtn');
@@ -62,14 +63,8 @@ passwordInput.addEventListener('keypress', (e) => {
 // --- Tab Navigation ---
 navItems.forEach(item => {
     item.addEventListener('click', () => {
-        // Remove active class from all
-        navItems.forEach(nav => nav.classList.remove('active'));
-        tabContents.forEach(tab => tab.classList.remove('active'));
-        
-        // Add active class to clicked
-        item.classList.add('active');
         const targetId = item.getAttribute('data-target');
-        document.getElementById(targetId).classList.add('active');
+        switchTab(targetId);
         
         // If switching to home, refresh data
         if(targetId === 'homeTab') {
@@ -137,8 +132,9 @@ updateBtn.addEventListener('click', async () => {
         if (data.success) {
             showMessage('Configuration updated successfully!', 'success');
             configInput.value = ''; // clear input after success
-            fetchCurrentConfig();
-            loadMeta();
+            await fetchCurrentConfig();
+            await loadMeta();
+            switchTab('homeTab');
         } else {
             showMessage(data.message || 'Update failed', 'error');
         }
@@ -158,6 +154,16 @@ function showMessage(msg, type) {
     }, 3000);
 }
 
+function switchTab(targetId) {
+    navItems.forEach(nav => {
+        nav.classList.toggle('active', nav.getAttribute('data-target') === targetId);
+    });
+
+    tabContents.forEach(tab => {
+        tab.classList.toggle('active', tab.id === targetId);
+    });
+}
+
 // --- Copy Raw Link Logic ---
 copyBtn.addEventListener('click', () => {
     rawLinkInput.select();
@@ -168,4 +174,11 @@ copyBtn.addEventListener('click', () => {
     setTimeout(() => {
         copyBtn.innerHTML = originalHtml;
     }, 2000);
+});
+
+openRawBtn.addEventListener('click', () => {
+    const rawUrl = rawLinkInput.value;
+    if (rawUrl) {
+        window.open(rawUrl, '_blank', 'noopener,noreferrer');
+    }
 });
