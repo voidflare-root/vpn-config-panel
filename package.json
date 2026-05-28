@@ -1,11 +1,17 @@
 {
   "name": "vpn-config-panel",
   "version": "1.0.0",
-  "private": true,
-  "description": "GitHub-backed VPN config panel.",
+  "description": "VPN Config Update Panel",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
   }
 }
