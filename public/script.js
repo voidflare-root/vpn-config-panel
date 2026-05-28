@@ -10,15 +10,12 @@ const loginError = document.getElementById('loginError');
 const navItems = document.querySelectorAll('.nav-item');
 const tabContents = document.querySelectorAll('.tab-content');
 
-const lblVersion = document.getElementById('lblVersion');
-const lblDate = document.getElementById('lblDate');
-const lblTime = document.getElementById('lblTime');
 const lblRepo = document.getElementById('lblRepo');
 const lblPath = document.getElementById('lblPath');
+const configPreview = document.getElementById('configPreview');
 const rawLinkInput = document.getElementById('rawLinkInput');
 const copyBtn = document.getElementById('copyBtn');
 
-const versionInput = document.getElementById('versionInput');
 const configInput = document.getElementById('configInput');
 const updateBtn = document.getElementById('updateBtn');
 const updateMessage = document.getElementById('updateMessage');
@@ -91,21 +88,9 @@ async function fetchCurrentConfig() {
             throw new Error(data.error || 'Failed to load config');
         }
         
-        lblVersion.textContent = 'v' + data.version;
-        lblDate.textContent = data.date;
-        lblTime.textContent = data.time;
-        
-        // Auto-increment version for the update tab input as suggestion
-        if(data.version) {
-            let currentVer = parseFloat(data.version);
-            if(!isNaN(currentVer)) {
-                versionInput.value = (currentVer + 0.1).toFixed(1);
-            }
-        }
+        configPreview.textContent = data.config || '--';
     } catch (err) {
-        lblVersion.textContent = '--';
-        lblDate.textContent = '--';
-        lblTime.textContent = '--';
+        configPreview.textContent = '--';
         console.error(err);
     }
 }
@@ -127,11 +112,10 @@ async function loadMeta() {
 
 // --- Update Config Logic ---
 updateBtn.addEventListener('click', async () => {
-    const newVersion = versionInput.value.trim();
-    const newConfig = configInput.value.trim();
+    const newConfig = configInput.value;
     
-    if(!newVersion || !newConfig) {
-        showMessage('Please fill in both fields.', 'error');
+    if(!newConfig.trim()) {
+        showMessage('Please paste update text.', 'error');
         return;
     }
 
@@ -144,7 +128,6 @@ updateBtn.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 password: sessionPassword,
-                version: newVersion,
                 config: newConfig
             })
         });
