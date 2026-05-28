@@ -1,114 +1,118 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VPN Config Panel</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="phone-shell">
-      <section id="loginView" class="phone-screen login-screen">
-        <div class="app-logo">VPN</div>
-        <p class="eyebrow">Private Config Manager</p>
-        <h1>Config Control</h1>
-        <p class="lead">Paste any config format and save it directly to GitHub.</p>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
 
-        <div class="login-card">
-          <label for="token">Admin token</label>
-          <div class="password-row">
-            <input id="token" type="password" autocomplete="current-password" placeholder="Your secret token" />
-            <button id="loginBtn" type="button">Unlock</button>
-          </div>
-          <p class="hint">Use the same token that you set in Render as ADMIN_TOKEN.</p>
-          <p id="loginStatus" class="status" role="status"></p>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active">
+        <div class="glass-card login-card">
+            <div class="logo-container">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2>Admin Login</h2>
+            <p>Enter your website password</p>
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="passwordInput" placeholder="Password">
+            </div>
+            <button id="loginBtn" class="btn primary-btn">Login</button>
+            <p id="loginError" class="error-msg"></p>
         </div>
-      </section>
+    </div>
 
-      <section id="dashboardView" class="phone-screen dashboard hidden">
+    <!-- Main App Screen -->
+    <div id="appScreen" class="screen">
         <header class="app-header">
-          <div>
-            <p class="eyebrow">VPN Panel</p>
-            <h2 id="screenTitle">Home</h2>
-          </div>
-          <span id="stateText" class="state-pill">Ready</span>
+            <h1>VPN Config Hub</h1>
         </header>
 
-        <section id="homeTab" class="tab-panel active">
-          <div class="hero-card">
-            <span class="hero-label">Config file</span>
-            <strong id="formatText">Direct</strong>
-            <p id="updatedText">Not updated yet</p>
-          </div>
+        <div class="content-area">
+            <!-- Home Tab -->
+            <div id="homeTab" class="tab-content active">
+                <div class="glass-card status-card">
+                    <div class="status-icon">
+                        <i class="fa-solid fa-server"></i>
+                    </div>
+                    <h3>GitHub Config Status</h3>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Version</span>
+                            <span class="value highlight" id="lblVersion">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Last Updated Date</span>
+                            <span class="value" id="lblDate">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Last Updated Time</span>
+                            <span class="value" id="lblTime">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">GitHub Repo</span>
+                            <span class="value mono" id="lblRepo">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">JSON File</span>
+                            <span class="value mono" id="lblPath">--</span>
+                        </div>
+                    </div>
+                </div>
 
-          <div class="info-list">
-            <div class="info-row">
-              <span>Config size</span>
-              <strong id="sizeText">0 B</strong>
+                <div class="glass-card link-card">
+                    <h3>GitHub Raw Link</h3>
+                    <p class="subtitle">Use this URL in your VPN app for online update checks.</p>
+                    <div class="copy-box">
+                        <input type="text" id="rawLinkInput" readonly value="">
+                        <button id="copyBtn" title="Copy Link"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>
             </div>
-            <div class="info-row">
-              <span>Raw endpoint</span>
-              <strong>data/config.json</strong>
+
+            <!-- Update Tab -->
+            <div id="updateTab" class="tab-content">
+                <div class="glass-card">
+                    <h3>Push New Config</h3>
+                    <p class="subtitle">Paste the update text. It will be saved into your GitHub JSON file.</p>
+                    
+                    <div class="input-group">
+                        <label>Config Version</label>
+                        <input type="text" id="versionInput" placeholder="e.g. 2.0">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Encrypted Configuration</label>
+                        <textarea id="configInput" placeholder="Paste your encrypted config here..." rows="8"></textarea>
+                    </div>
+
+                    <button id="updateBtn" class="btn primary-btn">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Update Configuration
+                    </button>
+                    <p id="updateMessage" class="msg"></p>
+                </div>
             </div>
-            <div class="info-row raw-row">
-              <span>Raw link</span>
-              <input id="rawLink" type="text" readonly />
-            </div>
-          </div>
+        </div>
 
-          <div class="actions two">
-            <button id="copyBtn" type="button">Copy link</button>
-            <a id="openRawBtn" class="link-button" href="/raw/config" target="_blank" rel="noreferrer">Open</a>
-          </div>
-        </section>
-
-        <section id="updateTab" class="tab-panel">
-          <label for="config">VPN config</label>
-          <textarea id="config" spellcheck="false" placeholder="Paste JSON, text, encoded data, server list, or any config format here"></textarea>
-
-          <div class="actions two">
-            <button id="saveBtn" type="button">Save update</button>
-            <button id="reloadBtn" class="secondary" type="button">Reload</button>
-          </div>
-
-          <p id="status" class="status" role="status"></p>
-        </section>
-
-        <section id="profileTab" class="tab-panel">
-          <div class="profile-card">
-            <div class="avatar">A</div>
-            <div>
-              <h3>Admin</h3>
-              <p>GitHub config manager</p>
-            </div>
-          </div>
-
-          <div class="info-list">
-            <div class="info-row">
-              <span>Save mode</span>
-              <strong>Direct text</strong>
-            </div>
-            <div class="info-row">
-              <span>Validation</span>
-              <strong>Off</strong>
-            </div>
-            <div class="info-row">
-              <span>App URL</span>
-              <strong id="appUrlText">-</strong>
-            </div>
-          </div>
-
-          <button id="logoutBtn" class="danger" type="button">Lock panel</button>
-        </section>
-
-        <nav class="bottom-tabs" aria-label="App navigation">
-          <button class="tab-btn active" type="button" data-tab="homeTab" data-title="Home"><span class="tab-icon">H</span>Home</button>
-          <button class="tab-btn" type="button" data-tab="updateTab" data-title="Update"><span class="tab-icon">U</span>Update</button>
-          <button class="tab-btn" type="button" data-tab="profileTab" data-title="Profile"><span class="tab-icon">P</span>Profile</button>
+        <!-- Bottom Taskbar -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="homeTab">
+                <i class="fa-solid fa-house"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" data-target="updateTab">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Update</span>
+            </button>
         </nav>
-      </section>
-    </main>
+    </div>
 
-    <script src="app.js"></script>
-  </body>
+    <script src="script.js"></script>
+</body>
 </html>
