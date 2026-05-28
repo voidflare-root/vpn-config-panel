@@ -1,264 +1,229 @@
-const fs = require("fs/promises");
-const http = require("http");
-const path = require("path");
-const { URL } = require("url");
+const express = require('express');
+const path = require('path');
+const cors = require('cors');
+require('dotenv').config();
 
+const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "change-me-now";
-const DATA_DIR = path.resolve(__dirname, process.env.DATA_DIR || "data");
-const CONFIG_FILE_NAME = "config.json";
-const CONFIG_PATH = path.join(DATA_DIR, CONFIG_FILE_NAME);
-const PUBLIC_DIR = path.join(__dirname, "public");
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-const GITHUB_REPO = process.env.GITHUB_REPO || "";
-const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
-const GITHUB_CONFIG_PATH = process.env.GITHUB_CONFIG_PATH || `data/${CONFIG_FILE_NAME}`;
-const MAX_BODY_SIZE = 5 * 1024 * 1024;
-const DEFAULT_CONFIG = "{}\n";
-const MIME_TYPES = {
-  ".css": "text/css; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".txt": "text/plain; charset=utf-8"
-};
 
-async function ensureConfigFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fs.access(CONFIG_PATH);
-  } catch {
-    await fs.writeFile(CONFIG_PATH, DEFAULT_CONFIG, "utf8");
-  }
+const PASSWORD = process.env.WEBSITE_PASSWORD || process.env.PASSWORD || 'admin123';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_REPO = process.env.GITHUB_REPO || '';
+const CONFIG_PATH = (process.env.CONFIG_PATH || 'data/config.json').replace(/^\/+/, '');
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || '';
+
+app.use(cors());
+app.use(express.json({ limit: '5mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+function assertGithubConfig() {
+    if (!GITHUB_TOKEN || !GITHUB_REPO) {
+        const missing = [];
+        if (!GITHUB_TOKEN) missing.push('GITHUB_TOKEN');
+        if (!GITHUB_REPO) missing.push('GITHUB_REPO');
+        const err = new Error(`Missing ${missing.join(', ')} in .env`);
+        err.status = 500;
+        throw err;
+    }
+
+    if (!/^[^/\s]+\/[^/\s]+$/.test(GITHUB_REPO)) {
+        const err = new Error('GITHUB_REPO must be in owner/repo format');
+        err.status = 500;
+        throw err;
+    }
 }
 
-function useGithubStorage() {
-  return Boolean(GITHUB_TOKEN && GITHUB_REPO);
+function githubHeaders() {
+    return {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+        'User-Agent': 'vpn-config-panel'
+    };
 }
 
-function githubApiUrl() {
-  const encodedPath = encodeURIComponent(GITHUB_CONFIG_PATH).replace(/%2F/g, "/");
-  return `https://api.github.com/repos/${GITHUB_REPO}/contents/${encodedPath}`;
+function githubContentUrl() {
+    const encodedPath = CONFIG_PATH.split('/').map(encodeURIComponent).join('/');
+    return `https://api.github.com/repos/${GITHUB_REPO}/contents/${encodedPath}`;
 }
 
-function githubRawUrl() {
-  return `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_CONFIG_PATH}`;
+function branchQuery() {
+    return GITHUB_BRANCH ? `?ref=${encodeURIComponent(GITHUB_BRANCH)}` : '';
+}
+
+function rawConfigUrl() {
+    const branch = GITHUB_BRANCH || 'main';
+    const encodedPath = CONFIG_PATH.split('/').map(encodeURIComponent).join('/');
+    return `https://raw.githubusercontent.com/${GITHUB_REPO}/${encodeURIComponent(branch)}/${encodedPath}`;
+}
+
+function encodeBase64(text) {
+    return Buffer.from(text, 'utf8').toString('base64');
+}
+
+function decodeBase64(text) {
+    return Buffer.from(text || '', 'base64').toString('utf8');
 }
 
 async function githubRequest(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${GITHUB_TOKEN}`,
-      "content-type": "application/json",
-      "user-agent": "vpn-config-panel",
-      "x-github-api-version": "2022-11-28",
-      ...(options.headers || {})
-    }
-  });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
-
-  if (!response.ok) {
-    throw new Error(data.message || "GitHub API request failed");
-  }
-
-  return data;
-}
-
-async function readGithubConfig() {
-  try {
-    const data = await githubRequest(`${githubApiUrl()}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
-    return Buffer.from(String(data.content || "").replace(/\n/g, ""), "base64").toString("utf8");
-  } catch (error) {
-    if (String(error.message).includes("Not Found")) {
-      return DEFAULT_CONFIG;
-    }
-    throw error;
-  }
-}
-
-async function saveGithubConfig(config) {
-  let sha;
-  try {
-    const existing = await githubRequest(`${githubApiUrl()}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
-    sha = existing.sha;
-  } catch (error) {
-    if (!String(error.message).includes("Not Found")) {
-      throw error;
-    }
-  }
-
-  await githubRequest(githubApiUrl(), {
-    method: "PUT",
-    body: JSON.stringify({
-      message: `Update VPN config ${new Date().toISOString()}`,
-      content: Buffer.from(config, "utf8").toString("base64"),
-      branch: GITHUB_BRANCH,
-      sha
-    })
-  });
-
-  const savedConfig = await readGithubConfig();
-  if (savedConfig !== config) {
-    throw new Error("GitHub save verification failed");
-  }
-}
-
-async function readConfig() {
-  if (useGithubStorage()) {
-    return readGithubConfig();
-  }
-
-  await ensureConfigFile();
-  return fs.readFile(CONFIG_PATH, "utf8");
-}
-
-async function saveConfig(config) {
-  if (useGithubStorage()) {
-    return saveGithubConfig(config);
-  }
-
-  await ensureConfigFile();
-  const tempPath = `${CONFIG_PATH}.tmp`;
-  await fs.writeFile(tempPath, config, "utf8");
-  await fs.rename(tempPath, CONFIG_PATH);
-}
-
-function send(res, status, body, contentType = "text/plain; charset=utf-8") {
-  res.writeHead(status, {
-    "content-type": contentType,
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, x-admin-token",
-    "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-    expires: "0",
-    pragma: "no-cache"
-  });
-  res.end(body);
-}
-
-function sendJson(res, status, payload) {
-  send(res, status, JSON.stringify(payload), "application/json; charset=utf-8");
-}
-
-function isAdmin(req) {
-  return req.headers["x-admin-token"] === ADMIN_TOKEN;
-}
-
-function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-
-    req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > MAX_BODY_SIZE) {
-        reject(new Error("Request body is too large"));
-        req.destroy();
-      }
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...githubHeaders(),
+            ...(options.headers || {})
+        }
     });
 
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(body || "{}"));
-      } catch {
-        reject(new Error("Invalid request JSON"));
-      }
-    });
+    const responseText = await response.text();
+    let data = null;
 
-    req.on("error", reject);
-  });
-}
-
-async function serveStatic(res, pathname) {
-  const safePath = pathname === "/" ? "/index.html" : pathname;
-  const filePath = path.normalize(path.join(PUBLIC_DIR, safePath));
-
-  if (!filePath.startsWith(PUBLIC_DIR)) {
-    return send(res, 403, "Forbidden");
-  }
-
-  try {
-    const file = await fs.readFile(filePath);
-    const contentType = MIME_TYPES[path.extname(filePath)] || "application/octet-stream";
-    return send(res, 200, file, contentType);
-  } catch {
-    return send(res, 404, "Not found");
-  }
-}
-
-async function handleRequest(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-
-  if (req.method === "OPTIONS") {
-    return send(res, 204, "");
-  }
-
-  if (url.pathname === "/api/config" && req.method === "GET") {
-    if (!isAdmin(req)) {
-      return sendJson(res, 401, { error: "Invalid admin token" });
+    if (responseText) {
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            data = { message: responseText };
+        }
     }
 
-    const config = await readConfig();
-    return sendJson(res, 200, {
-      config,
-      rawUrl: useGithubStorage() ? githubRawUrl() : `${url.origin}/raw/config`,
-      storage: useGithubStorage() ? "github" : "local"
-    });
-  }
-
-  if (url.pathname === "/api/config" && req.method === "PUT") {
-    if (!isAdmin(req)) {
-      return sendJson(res, 401, { error: "Invalid admin token" });
+    if (!response.ok) {
+        const message = data?.message || `GitHub request failed with ${response.status}`;
+        const err = new Error(message);
+        err.status = response.status;
+        err.github = data;
+        throw err;
     }
 
-    const body = await readJsonBody(req);
-    const config = typeof body.config === "string" ? body.config : "";
-
-    if (!config.trim()) {
-      return sendJson(res, 400, { error: "Config cannot be empty" });
-    }
-
-    // Save exactly what the admin pasted. No JSON validation, no wrapping, no version injection.
-    await saveConfig(config);
-
-    return sendJson(res, 200, {
-      ok: true,
-      updatedAt: new Date().toISOString(),
-      bytes: Buffer.byteLength(config, "utf8"),
-      rawUrl: useGithubStorage() ? githubRawUrl() : `${url.origin}/raw/config`,
-      storage: useGithubStorage() ? "github" : "local"
-    });
-  }
-
-  if (
-    (url.pathname === "/raw/config" ||
-      url.pathname === "/config.json" ||
-      url.pathname === "/config.txt") &&
-    req.method === "GET"
-  ) {
-    const config = await readConfig();
-    return send(res, 200, config, "application/json; charset=utf-8");
-  }
-
-  if (req.method === "GET") {
-    return serveStatic(res, url.pathname);
-  }
-
-  return send(res, 405, "Method not allowed");
+    return data;
 }
 
-ensureConfigFile().then(() => {
-  http
-    .createServer((req, res) => {
-      handleRequest(req, res).catch((error) => {
-        console.error(error);
-        sendJson(res, 500, { error: error.message || "Server error" });
-      });
-    })
-    .listen(PORT, () => {
-      console.log(`VPN config panel running at http://localhost:${PORT}`);
-      console.log(`Raw config link: ${useGithubStorage() ? githubRawUrl() : `http://localhost:${PORT}/raw/config`}`);
+async function getGithubFile() {
+    assertGithubConfig();
+    return githubRequest(`${githubContentUrl()}${branchQuery()}`);
+}
+
+async function getCurrentConfig() {
+    const file = await getGithubFile();
+    const content = decodeBase64(file.content);
+    const data = JSON.parse(content || '{}');
+
+    return {
+        data: {
+            version: data.version || '0',
+            date: data.date || '-',
+            time: data.time || '-',
+            config: data.config || ''
+        },
+        sha: file.sha
+    };
+}
+
+async function saveConfig(configData, sha) {
+    const body = {
+        message: `Update VPN config v${configData.version}`,
+        content: encodeBase64(JSON.stringify(configData, null, 4))
+    };
+
+    if (sha) {
+        body.sha = sha;
+    }
+
+    if (GITHUB_BRANCH) {
+        body.branch = GITHUB_BRANCH;
+    }
+
+    return githubRequest(githubContentUrl(), {
+        method: 'PUT',
+        body: JSON.stringify(body)
     });
+}
+
+app.get('/api/meta', (req, res) => {
+    res.json({
+        repo: GITHUB_REPO || '-',
+        configPath: CONFIG_PATH,
+        branch: GITHUB_BRANCH || 'main',
+        rawLink: GITHUB_REPO ? rawConfigUrl() : ''
+    });
+});
+
+app.get('/api/config', async (req, res) => {
+    try {
+        const { data } = await getCurrentConfig();
+        res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(err.status || 500).json({
+            version: '0',
+            date: '-',
+            time: '-',
+            config: '',
+            error: err.message || 'Failed to load GitHub config'
+        });
+    }
+});
+
+app.get('/config.json', async (req, res) => {
+    try {
+        const { data } = await getCurrentConfig();
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(data, null, 4));
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message || 'Config not found' });
+    }
+});
+
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+
+    if (password === PASSWORD) {
+        res.json({ success: true });
+        return;
+    }
+
+    res.status(401).json({ success: false, message: 'Invalid password' });
+});
+
+app.post('/api/update', async (req, res) => {
+    const { password, config, version } = req.body;
+
+    if (password !== PASSWORD) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!config || !String(config).trim()) {
+        return res.status(400).json({ success: false, message: 'Config text is required' });
+    }
+
+    try {
+        const now = new Date();
+        const configData = {
+            version: String(version || '1.0').trim(),
+            date: now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }),
+            time: now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
+            config: String(config).trim()
+        };
+
+        let sha = null;
+
+        try {
+            const current = await getCurrentConfig();
+            sha = current.sha;
+        } catch (err) {
+            if (err.status !== 404) throw err;
+        }
+
+        await saveConfig(configData, sha);
+        res.json({ success: true, data: configData, rawLink: rawConfigUrl() });
+    } catch (err) {
+        console.error(err);
+        res.status(err.status || 500).json({
+            success: false,
+            message: err.message || 'Failed to update GitHub configuration'
+        });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
