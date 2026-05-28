@@ -105,23 +105,17 @@ async function getGithubFile() {
 async function getCurrentConfig() {
     const file = await getGithubFile();
     const content = decodeBase64(file.content);
-    const data = JSON.parse(content || '{}');
 
     return {
-        data: {
-            version: data.version || '0',
-            date: data.date || '-',
-            time: data.time || '-',
-            config: data.config || ''
-        },
+        data: { config: content },
         sha: file.sha
     };
 }
 
-async function saveConfig(configData, sha) {
+async function saveConfig(configText, sha) {
     const body = {
-        message: `Update VPN config v${configData.version}`,
-        content: encodeBase64(JSON.stringify(configData, null, 4))
+        message: 'Update VPN config',
+        content: encodeBase64(configText)
     };
 
     if (sha) {
@@ -154,9 +148,6 @@ app.get('/api/config', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({
-            version: '0',
-            date: '-',
-            time: '-',
             config: '',
             error: err.message || 'Failed to load GitHub config'
         });
@@ -166,8 +157,8 @@ app.get('/api/config', async (req, res) => {
 app.get('/config.json', async (req, res) => {
     try {
         const { data } = await getCurrentConfig();
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(data, null, 4));
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.send(data.config);
     } catch (err) {
         res.status(err.status || 500).json({ error: err.message || 'Config not found' });
     }
@@ -185,7 +176,7 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/update', async (req, res) => {
-    const { password, config, version } = req.body;
+    const { password, config } = req.body;
 
     if (password !== PASSWORD) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -196,14 +187,6 @@ app.post('/api/update', async (req, res) => {
     }
 
     try {
-        const now = new Date();
-        const configData = {
-            version: String(version || '1.0').trim(),
-            date: now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }),
-            time: now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
-            config: String(config).trim()
-        };
-
         let sha = null;
 
         try {
@@ -213,8 +196,9 @@ app.post('/api/update', async (req, res) => {
             if (err.status !== 404) throw err;
         }
 
-        await saveConfig(configData, sha);
-        res.json({ success: true, data: configData, rawLink: rawConfigUrl() });
+        const configText = String(config);
+        await saveConfig(configText, sha);
+        res.json({ success: true, data: { config: configText }, rawLink: rawConfigUrl() });
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({
